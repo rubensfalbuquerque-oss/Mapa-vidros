@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mapa de Substituição de Vidros</title>
+<style>
+:root{
+  --bg:#f3f5f7; --card:#fff; --line:#d9e0e6; --txt:#1c2a35; --mut:#64727e; --acc:#0b57d0;
+  --c-pendente:#cddbe5; --c-planejado:#4f8ef7; --c-andamento:#f6b73c; --c-executado:#2fa264; --c-impedido:#e2473f;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:13px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--txt);background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 10px}
+button:hover{background:#eef3f8}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+button.primary:hover{background:#0a4cb4}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select{border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:#fff;min-width:0}
+input:focus,select:focus,button:focus-visible{outline:2px solid #9bbcf5;outline-offset:0}
+
+header.top{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 14px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.titles{display:flex;flex-direction:column;gap:2px;min-width:260px;flex:1}
+.titles input{border:1px solid transparent;background:transparent;padding:1px 4px;width:100%}
+.titles input:hover{border-color:var(--line)}
+#title{font-size:17px;font-weight:650}
+#sub{color:var(--mut)}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+
+#layout{display:flex;flex-direction:column;gap:12px;padding:12px;max-width:1700px;margin:0 auto}
+.mapcard{position:sticky;top:0;z-index:20;box-shadow:0 3px 10px rgba(20,40,60,.12)}
+body.nopin .mapcard{position:static;box-shadow:none}
+#progress{margin-top:8px}
+#progress .bar{height:8px}
+.pstats{display:flex;gap:16px;flex-wrap:wrap;margin-top:5px;font-size:12px;color:var(--mut)}
+.pstats b{color:var(--txt);font-variant-numeric:tabular-nums}
+details#editor>summary{cursor:pointer;font-weight:650;font-size:13px}
+details#editor[open]>summary{margin-bottom:8px}
+tbody tr{scroll-margin-top:calc(var(--mapH,0px) + 44px)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.card h3{margin:0 0 8px;font-size:13px;letter-spacing:.2px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.mut{color:var(--mut)}
+
+.maptools{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.maptools label{display:flex;gap:5px;align-items:center}
+.mapwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#e9edf0;padding:6px 0}
+svg#map{display:block;width:100%;height:auto;min-width:100%}
+.outline{fill:#eef2f5;stroke:#56656f;stroke-width:1;vector-effect:non-scaling-stroke}
+.gl polygon{stroke:#56656f;stroke-width:1;vector-effect:non-scaling-stroke;cursor:pointer;transition:opacity .15s}
+.gl:hover polygon{stroke:#10202c;stroke-width:1.8}
+.gl.late polygon{stroke:#b3261e;stroke-width:1.8;stroke-dasharray:3 2}
+.gl.sel polygon{stroke:#0b57d0;stroke-width:2.8;stroke-dasharray:none}
+.gl.dim{opacity:.22}
+.gl text{pointer-events:none;text-anchor:middle;dominant-baseline:central;font-weight:600}
+.hint{font-size:11.5px;color:var(--mut);margin-top:6px}
+
+.legend{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.lg{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:2px 8px 2px 4px;background:#fff}
+.lg.on{border-color:var(--acc);box-shadow:0 0 0 2px #cfe0fb}
+.lg input[type=color]{width:20px;height:20px;padding:0;border:none;background:none;cursor:pointer}
+.lg button{border:none;background:none;padding:0 2px}
+.lg b{font-variant-numeric:tabular-nums}
+
+.bar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:#e5eaee;border:1px solid var(--line)}
+.bar i{display:block;height:100%}
+.stats{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px}
+.stat b{font-size:17px;font-variant-numeric:tabular-nums}
+.stat span{display:block;font-size:11.5px;color:var(--mut)}
+
+.erow{display:grid;grid-template-columns:130px 150px 1fr;gap:8px}
+.erow label{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--mut)}
+.erow input,.erow select{color:var(--txt)}
+.ebtn{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:3px 5px;border-bottom:1px solid #eaeef2;text-align:left;vertical-align:middle;white-space:nowrap}
+thead th{position:sticky;top:var(--mapH,0px);background:#f7f9fb;z-index:1;font-size:11.5px;color:var(--mut);border-bottom:1px solid var(--line)}
+tbody tr:hover{background:#f6f9fd}
+tbody tr.sel{background:#e4eefc}
+td.n{cursor:pointer}
+td.n{font-weight:700;text-align:right;width:38px}
+td.ps{color:var(--mut);font-size:12px}
+td.n{user-select:none}
+svg#map{user-select:none;-webkit-user-select:none}
+td.st{width:150px}
+td.st select{width:118px}
+td input[type=date]{width:128px}
+td input.ob{width:100%;min-width:160px}
+.dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid rgba(0,0,0,.25)}
+.tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:600}
+.tag.ok{background:#d8f1e3;color:#17653c}
+.tag.plan{background:#dce8fd;color:#1a4aa6}
+.tag.atr{background:#fbdcda;color:#9a1f18}
+.tag.and{background:#fdebc7;color:#82570a}
+.tag.imp{background:#fbdcda;color:#9a1f18}
+.tag.aviso{background:#fff0b8;color:#7a5b00}
+.tag.nd{color:var(--mut)}
+.tblcard{padding:0}
+.tbltools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line)}
+.tblwrap{overflow:visible}
+.empty{padding:20px;text-align:center;color:var(--mut)}
+
+#sched table{min-width:0;width:100%}
+#sched td,#sched th{white-space:normal;padding:3px 4px}
+#sched td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+#sched textarea{width:100%;min-width:140px;resize:none;overflow:hidden;border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit;line-height:1.3}
+#sched select,#sched input[type=date]{width:100%}
+#sched tr.newrow td{background:#f3f7fd;border-bottom:2px solid var(--line)}
+#sched tr.sel td{background:#e4eefc}
+button.sm{padding:2px 7px;line-height:1.2}
+.nodate{margin-top:8px;color:var(--mut);font-size:12px}
+.sync{font-size:12px;padding:3px 9px;border-radius:12px;background:#eef2f5;color:#4a5a66;white-space:nowrap}
+.sync.ok{background:#dff3e3;color:#1b6b34}.sync.err{background:#fde2e0;color:#a32018}.sync.warn{background:#fff1d0;color:#8a5a00}
+body.ro #editor,body.ro #sched,body.ro #tbl .ss,body.ro #tbl .dd,body.ro #tbl .ob,body.ro #bClear,body.ro #bImp,body.ro #bUndo,body.ro .lg input{pointer-events:none;opacity:.55}
+.dlg{position:fixed;inset:0;background:rgba(20,30,40,.45);display:flex;align-items:center;justify-content:center;z-index:100}
+.dlg .box{background:#fff;border-radius:10px;padding:18px 20px;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.dlg p{margin:0 0 14px;line-height:1.4}.dlg .box div{display:flex;gap:8px;justify-content:flex-end}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:#1c2a35;color:#fff;padding:8px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;z-index:50;max-width:90vw}
+#toast.on{opacity:.96;transform:translateX(-50%)}
+
+@media (max-width:1050px){
+  .tblwrap{overflow-x:auto}
+  .erow{grid-template-columns:1fr 1fr}
+}
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  body{background:#fff}
+  header.top .actions,.maptools,.hint,#editor,.tbltools,.legend button,.lg input{display:none!important}
+  #layout{padding:0}
+  .mapcard{position:static!important;box-shadow:none}
+  .card{break-inside:avoid;border-color:#bbb}
+  table{min-width:0;font-size:10px}
+  td input,td select{border:none;background:none;appearance:none;padding:0}
+  thead th{position:static}
+}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<header class="top">
+  <div class="titles">
+    <input id="title" aria-label="Título" spellcheck="false">
+    <input id="sub" aria-label="Subtítulo" spellcheck="false" placeholder="Contrato / SS / local">
+  </div>
+  <div class="actions">
+    <button id="bUndo" disabled title="Desfazer a última alteração (Ctrl+Z)">↶ Desfazer</button>
+    <button id="bCsv" title="Exporta a tabela para abrir no Excel">Exportar CSV</button>
+    <button id="bJson" title="Backup completo dos dados">Salvar backup (JSON)</button>
+    <button id="bImp">Carregar backup</button>
+    <input type="file" id="fImp" accept=".json,application/json" hidden>
+    <button id="codechip" hidden title="Copiar link do projeto"></button><span id="syncst" class="sync" title="Estado da sincronização com o banco compartilhado">Modo local</span>
+    <button id="bClear">Limpar tudo</button>
+  </div>
+</header>
+
+<main id="layout">
+  <div class="card mapcard" id="mapcard">
+    <div class="maptools">
+      <label>Rótulo
+        <select id="selLabel">
+          <option value="n">Nº</option>
+          <option value="d">Data (dd/mm)</option>
+          <option value="x">Nenhum</option>
+        </select>
+      </label>
+      <label>Zoom <input type="range" id="zoom" min="1" max="4" step="0.25" value="1"></label>
+      <label title="Colore o mapa pela data: vidros com data até a referência aparecem como executados, os demais com data como planejados">
+        <input type="checkbox" id="chkView"> Visão por data até
+        <input type="date" id="refDate">
+      </label>
+      <label title="Mantém o mapa visível no topo enquanto você rola o cronograma e a tabela"><input type="checkbox" id="chkPin"> Fixar mapa no topo</label>
+      <span class="mut" title="Clique seleciona um vidro · Ctrl/Shift + clique seleciona vários · contorno vermelho tracejado = planejado com data vencida · Esc limpa a seleção">ⓘ clique = seleciona · Ctrl/Shift = vários</span>
+    </div>
+    <div class="mapwrap" id="mapwrap"><svg id="map" xmlns="http://www.w3.org/2000/svg" viewBox="-26 14 858 92" role="img" aria-label="Mapa dos vidros da cobertura"></svg></div>
+    <div id="progress"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <details class="card" id="editor"></details>
+
+  <div class="card" id="sched"></div>
+
+  <div class="card tblcard">
+    <div class="tbltools">
+      <input id="q" type="search" placeholder="Buscar (nº, posição, observações...)" style="flex:1;min-width:150px">
+      <label>Status
+        <select id="fStatus"></select>
+      </label>
+      <label title="Ao informar uma data em vidro Pendente: futura vira Planejado, hoje/passada vira Executado">
+        <input type="checkbox" id="chkAuto"> status automático pela data
+      </label>
+      <button id="bAll">Selecionar listados</button>
+      <button id="bNone">Limpar seleção</button>
+    </div>
+    <div class="tblwrap">
+      <table id="tbl">
+        <thead><tr>
+          <th></th><th style="text-align:right">Nº</th><th>Posição</th><th>Status</th><th>Data de execução</th><th>Situação</th><th>Observações</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="empty" id="empty" hidden>Nenhum vidro para o filtro atual.</div>
+    </div>
+  </div>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- Constantes ---------- */
+const STATUS = [
+  {k:'pendente',  n:'Pendente',    c:'#cddbe5'},
+  {k:'planejado', n:'Planejado',   c:'#4f8ef7'},
+  {k:'andamento', n:'Em execução', c:'#f6b73c'},
+  {k:'executado', n:'Executado',   c:'#2fa264'},
+  {k:'impedido',  n:'Impedido',    c:'#e2473f'}
+];
+const SK = Object.fromEntries(STATUS.map(s => [s.k, s]));
+const LS = 'mapaVidros.v2';
+
+/* Geometria (coordenadas da planta): 32 colunas centrais + 2 pontas triangulares */
+const W = 23.65, X0 = 16.5, YT = 30, YS = 63, YB = 99.5, XL = 108.7, SL = (99.5 - 30) / 127, CXM = 394.9;
+const XLB = XL - (YB - YT) / SL, XR = 2 * CXM - XL, XRB = 2 * CXM - XLB;
+const OUT = [[XLB, YB], [XL, YT], [XR, YT], [XRB, YB]];
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+const fmt = iso => iso ? iso.split('-').reverse().join('/') : '';
+const fmtS = iso => iso ? iso.slice(8) + '/' + iso.slice(5, 7) : '';
+const pts = p => p.map(q => q[0].toFixed(2) + ',' + q[1].toFixed(2)).join(' ');
+
+function area(p){ let a = 0; for (let i = 0; i < p.length; i++){ const j = (i + 1) % p.length; a += p[i][0] * p[j][1] - p[j][0] * p[i][1]; } return a / 2; }
+function centroid(p){
+  const A = area(p); let cx = 0, cy = 0;
+  for (let i = 0; i < p.length; i++){ const j = (i + 1) % p.length, f = p[i][0] * p[j][1] - p[j][0] * p[i][1]; cx += (p[i][0] + p[j][0]) * f; cy += (p[i][1] + p[j][1]) * f; }
+  return [cx / (6 * A), cy / (6 * A)];
+}
+function clip(subject, cp){
+  const sign = area(cp) > 0 ? 1 : -1;
+  let out = subject;
+  for (let i = 0; i < cp.length; i++){
+    const A = cp[i], B = cp[(i + 1) % cp.length];
+    const inside = p => sign * ((B[0] - A[0]) * (p[1] - A[1]) - (B[1] - A[1]) * (p[0] - A[0])) >= -1e-9;
+    const inter = (P, Q) => {
+      const d = (P[0] - Q[0]) * (A[1] - B[1]) - (P[1] - Q[1]) * (A[0] - B[0]);
+      const t = ((P[0] - A[0]) * (A[1] - B[1]) - (P[1] - A[1]) * (A[0] - B[0])) / d;
+      return [P[0] + t * (Q[0] - P[0]), P[1] + t * (Q[1] - P[1])];
+    };
+    const inp = out; out = [];
+    for (let j = 0; j < inp.length; j++){
+      const cur = inp[j], prev = inp[(j + inp.length - 1) % inp.length];
+      if (inside(cur)){ if (!inside(prev)) out.push(inter(prev, cur)); out.push(cur); }
+      else if (inside(prev)) out.push(inter(prev, cur));
+    }
+    if (!out.length) break;
+  }
+  return out;
+}
+function lum(hex){ const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255; }
+
+/* ---------- Geração dos vidros ----------
+   Numeração conforme DE-3601.04-8243-15D-HBU-003-0: fiada inferior 1–34 e superior 35–62 (Oeste → Leste).
+   Os vidros 18 e 49 constam nas duas plantas (junção Oeste/Leste). */
+const zonaDe = n => (n === 18 || n === 49) ? 'Oeste/Leste' : (n < 18 || (n >= 35 && n < 49)) ? 'Oeste' : 'Leste';
+const GL = [];
+(function build(){
+  const add = (n, pos, x1, y1, x2, y2) => {
+    const p = clip([[x1, y1], [x2, y1], [x2, y2], [x1, y2]], OUT);
+    if (p.length < 3 || Math.abs(area(p)) < 8) return;
+    GL.push({id: String(n).padStart(2, '0'), n, pos, zona: zonaDe(n), p, c: centroid(p), a: Math.abs(area(p))});
+  };
+  for (let k = -1; k <= 32; k++){
+    let a = X0 + k * W, b = a + W;
+    if (k === -1) a = -40;
+    if (k === 32) b = 840;
+    const nb = k + 2;
+    if (k <= 1 || k >= 30) add(nb, 'Único', a, YT, b, YB);
+    else { add(nb + 31, 'Superior', a, YT, b, YS); add(nb, 'Inferior', a, YS, b, YB); }
+  }
+  GL.sort((x, y) => x.n - y.n);
+})();
+const BYID = Object.fromEntries(GL.map(g => [g.id, g]));
+
+/* ---------- Estado ---------- */
+const DEF = () => ({title:'Mapa de Substituição de Vidros', sub:'Planta Zona Oeste / Leste – Piso Superior · DE-3601.04-8243-15D-HBU-003-0', g:{}, colors:{}, auto:true, zoom:1, label:'n', view:false, ref:today(), filter:'', q:'', pin:true});
+let S = DEF();
+try { const raw = localStorage.getItem(LS); if (raw) S = Object.assign(DEF(), JSON.parse(raw)); } catch(e){}
+for (const id in S.g){ const x = S.g[id]; if (x && x.e){ x.o = x.o ? x.o + ' | ' + x.e : x.e; } if (x) delete x.e; }
+let sel = new Set();
+let lastClicked = null;
+
+const persistLocal = () => { try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){} };
+const save = () => { persistLocal(); schedPush(); };
+const G = id => Object.assign({s:'pendente', d:'', o:''}, S.g[id]);
+const put = (id, patch) => { S.g[id] = Object.assign(G(id), patch); };
+const color = k => S.colors[k] || SK[k].c;
+function applyColors(){ for (const s of STATUS) document.documentElement.style.setProperty('--c-' + s.k, color(s.k)); }
+
+function setDate(id, d){
+  const g = G(id), patch = {d};
+  if (S.auto){
+    if (g.s === 'pendente' && d) patch.s = d > today() ? 'planejado' : 'executado';
+    else if (g.s === 'planejado' && !d) patch.s = 'pendente';
+  }
+  put(id, patch);
+}
+function eff(g){
+  if (!S.view) return g.s;
+  if (g.s === 'impedido') return 'impedido';
+  if (g.d) return g.d <= S.ref ? 'executado' : 'planejado';
+  return 'pendente';
+}
+const isLate = g => (g.s === 'planejado' || g.s === 'pendente') && g.d && g.d < today();
+function situacao(g){
+  const t = today();
+  if (g.s === 'executado'){ if (!g.d) return ['aviso', 'Sem data']; return g.d <= t ? ['ok', 'Realizada'] : ['aviso', 'Data futura']; }
+  if (g.s === 'andamento') return ['and', 'Em andamento'];
+  if (g.s === 'impedido') return ['imp', 'Impedido'];
+  if (g.d) return g.d < t ? ['atr', 'Atrasada'] : ['plan', 'Planejada'];
+  return ['nd', '—'];
+}
+
+/* ---------- Mapa ---------- */
+function renderMap(){
+  const svg = $('#map');
+  let h = `<polygon class="outline" points="${pts(OUT)}"/>` +
+    `<text x="20" y="24" font-size="7" fill="#64727e" font-weight="700">ZONA OESTE ›</text><text x="770" y="24" font-size="7" fill="#64727e" font-weight="700" text-anchor="end">‹ ZONA LESTE</text>` +
+    `<text x="394.9" y="24" font-size="6" fill="#64727e" text-anchor="middle">vidros 18 e 49 = junção das plantas</text>`;
+  const draw = g => {
+    const gg = G(g.id), st = eff(gg), col = color(st);
+    const cls = ['gl'];
+    if (sel.has(g.id)) cls.push('sel');
+    if (isLate(gg)) cls.push('late');
+    if (S.filter && gg.s !== S.filter) cls.push('dim');
+    const [tg] = situacao(gg), sit = situacao(gg)[1];
+    const tip = `Vidro ${g.n} (${g.zona}, ${g.pos}) — ${SK[gg.s].n}${gg.d ? ' · ' + fmt(gg.d) : ''}${sit !== '—' ? ' · ' + sit : ''}${gg.o ? '\nObs.: ' + gg.o : ''}`;
+    let t = '';
+    const lt = S.label === 'n' ? String(g.n) : S.label === 'd' ? fmtS(gg.d) : '';
+    if (lt && g.a > 120){
+      const fs = S.label === 'd' ? 5.2 : 7.5;
+      t = `<text x="${g.c[0].toFixed(1)}" y="${g.c[1].toFixed(1)}" font-size="${fs}" fill="${lum(col) > .55 ? '#10202c' : '#fff'}">${esc(lt)}</text>`;
+    }
+    return `<g class="${cls.join(' ')}" data-id="${g.id}"><polygon points="${pts(g.p)}" fill="${col}"/>${t}<title>${esc(tip)}</title></g>`;
+  };
+  for (const g of GL) if (!sel.has(g.id)) h += draw(g);
+  for (const g of GL) if (sel.has(g.id)) h += draw(g);
+  svg.innerHTML = h;
+  svg.style.width = (S.zoom * 100) + '%';
+}
+
+/* ---------- Legenda / progresso ---------- */
+function counts(){
+  const c = Object.fromEntries(STATUS.map(s => [s.k, 0]));
+  for (const g of GL) c[eff(G(g.id))]++;
+  return c;
+}
+function renderLegend(){
+  const c = counts();
+  $('#legend').innerHTML = STATUS.map(s => `
+    <span class="lg ${S.filter === s.k ? 'on' : ''}">
+      <input type="color" data-k="${s.k}" value="${color(s.k)}" title="Alterar a cor de ${s.n}">
+      <button data-f="${s.k}" title="Filtrar por ${s.n}">${s.n}</button> <b>${c[s.k]}</b>
+    </span>`).join('') +
+    `<button id="bResetColors" title="Restaurar cores padrão">Cores padrão</button>`;
+}
+function renderProgress(){
+  const c = counts(), tot = GL.length, pc = v => (100 * v / tot).toFixed(1).replace('.', ',') + '%';
+  let late = 0;
+  const t = today(), futuras = [];
+  for (const g of GL){ const gg = G(g.id); if (isLate(gg)) late++; if (gg.d && gg.d >= t && gg.s !== 'executado') futuras.push(gg.d); }
+  futuras.sort(); const next = futuras[0] ? fmt(futuras[0]) : '—';
+  $('#progress').innerHTML = `
+    <div class="bar" title="Distribuição por status">${STATUS.map(s => c[s.k] ? `<i style="width:${100 * c[s.k] / tot}%;background:${color(s.k)}" title="${s.n}: ${c[s.k]}"></i>` : '').join('')}</div>
+    <div class="pstats">
+      <span><b>${c.executado}/${tot}</b> executados (${pc(c.executado)})</span>
+      <span style="${late ? 'color:#b3261e' : ''}"><b style="${late ? 'color:#b3261e' : ''}">${late}</b> planejados atrasados</span>
+      <span>próxima data planejada: <b>${next}</b></span>
+      ${S.view ? `<span><b>visão por data até ${fmt(S.ref)}</b></span>` : ''}
+    </div>`;
+}
+
+/* ---------- Utilidades de lista de vidros ---------- */
+const BYN = Object.fromEntries(GL.map(g => [g.n, g]));
+function parseNums(text){
+  const t = String(text).replace(/\s+(a|até|ate)\s+/gi, '-').replace(/\s*[–—-]\s*/g, '-');
+  const ok = new Set(), bad = [];
+  t.split(/[,;\s]+/).filter(Boolean).forEach(tok => {
+    let m = tok.match(/^(\d+)-(\d+)$/);
+    if (m){ let x = +m[1], y = +m[2]; if (x > y) [x, y] = [y, x]; for (let n = x; n <= y; n++) BYN[n] ? ok.add(n) : bad.push(n); }
+    else if (/^\d+$/.test(tok)) BYN[+tok] ? ok.add(+tok) : bad.push(tok);
+    else bad.push(tok);
+  });
+  return {ok: [...ok].sort((p, q) => p - q), bad};
+}
+function compact(ns){
+  const a = [...ns].sort((p, q) => p - q), out = [];
+  for (let i = 0; i < a.length;){
+    let j = i; while (j + 1 < a.length && a[j + 1] === a[j] + 1) j++;
+    if (j - i >= 2) out.push(a[i] + '-' + a[j]); else for (let k = i; k <= j; k++) out.push(a[k]);
+    i = j + 1;
+  }
+  return out.join(', ');
+}
+const idN = n => BYN[n].id;
+
+/* ---------- Cronograma por data (editável) ---------- */
+const NEW = {d: '', s: '', v: ''};
+function renderSched(){
+  const m = new Map();
+  for (const g of GL){ const gg = G(g.id); if (gg.d){ if (!m.has(gg.d)) m.set(gg.d, []); m.get(gg.d).push(g.n); } }
+  const days = [...m.keys()].sort(), t = today();
+  const stOpts = cur => (cur === 'misto' ? '<option value="misto" selected disabled>Misto</option>' : '') +
+    STATUS.map(x => `<option value="${x.k}" ${cur === x.k ? 'selected' : ''}>${x.n}</option>`).join('');
+  let acc = 0;
+  const rows = days.map(d => {
+    const ns = m.get(d).sort((p, q) => p - q); acc += ns.length;
+    const sts = new Set(ns.map(n => G(idN(n)).s)), cur = sts.size === 1 ? [...sts][0] : 'misto';
+    const done = ns.filter(n => G(idN(n)).s === 'executado').length;
+    let tg;
+    if (done === ns.length) tg = d <= t ? ['ok', 'Realizado'] : ['aviso', 'Data futura'];
+    else if (d > t) tg = ['plan', 'Planejado'];
+    else tg = done ? ['aviso', 'Parcial'] : (d === t ? ['and', 'Hoje'] : ['atr', 'Atrasado']);
+    const on = ns.length && ns.every(n => sel.has(idN(n)));
+    return `<tr data-d="${d}" class="${on ? 'sel' : ''}">
+      <td><button class="sm" data-a="sel" title="Selecionar estes vidros no mapa">◎</button></td>
+      <td><input type="date" class="gd" value="${d}" title="Alterar a data move todos os vidros desta linha"></td>
+      <td><span class="tag ${tg[0]}">${tg[1]}</span></td>
+      <td><select class="gs" title="Altera o status de todos os vidros desta linha">${stOpts(cur)}</select></td>
+      <td class="num">${ns.length}</td>
+      <td class="num">${acc} (${(100 * acc / GL.length).toFixed(0)}%)</td>
+      <td><textarea class="gv" rows="1" spellcheck="false" title="Edite os números (ex.: 4, 6, 35-37). Enter confirma.">${compact(ns)}</textarea></td>
+      <td><button class="sm" data-a="del" title="Remover a data destes vidros">✕</button></td></tr>`;
+  }).join('');
+  const nodate = GL.filter(g => !G(g.id).d).map(g => g.n);
+  $('#sched').innerHTML = `
+    <h3>Cronograma por data <span class="mut">— edite a data, o status ou a lista de vidros direto na linha</span></h3>
+    <table>
+      <thead><tr><th></th><th>Data</th><th>Situação</th><th>Status</th><th style="text-align:right">Qtd</th><th style="text-align:right">Acumulado</th><th>Vidros (nºs, ex.: 4, 6, 35-37)</th><th></th></tr></thead>
+      <tbody>
+        <tr class="newrow">
+          <td>＋</td>
+          <td><input type="date" id="nD" value="${NEW.d}"></td>
+          <td colspan="2"><select id="nS"><option value="">Status automático</option>${STATUS.map(x => `<option value="${x.k}" ${NEW.s === x.k ? 'selected' : ''}>${x.n}</option>`).join('')}</select></td>
+          <td></td><td></td>
+          <td><textarea id="nV" rows="1" spellcheck="false" placeholder="Nova data: informe a data e os vidros">${esc(NEW.v)}</textarea></td>
+          <td style="white-space:nowrap"><button class="sm primary" data-a="add">Adicionar</button><br><button class="sm" data-a="usesel" title="Preencher com os vidros selecionados" style="margin-top:3px">↤ seleção</button></td>
+        </tr>
+        ${rows || `<tr><td colspan="8" class="mut" style="padding:10px">Nenhuma data informada ainda.</td></tr>`}
+      </tbody>
+    </table>
+    <div class="nodate"><b>Sem data (${nodate.length}):</b> ${nodate.length ? compact(nodate) : '—'}</div>`;
+  fitAreas();
+}
+function fitAreas(){ document.querySelectorAll('#sched textarea').forEach(t => { t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; }); }
+
+/* ---------- Editor (seleção) ---------- */
+function renderEditor(){
+  const ids = [...sel], one = ids.length === 1 ? G(ids[0]) : null, off = ids.length ? '' : 'disabled';
+  const nums = ids.map(i => idN2(i)).sort((p, q) => p - q);
+  $('#editor').innerHTML = `
+    <summary>Edição rápida <span class="mut">— ${ids.length ? ids.length + ' vidro(s) selecionado(s): ' + compact(nums) : 'selecione vidros no mapa ou na tabela'}</span></summary>
+    <div class="ebody"><div class="erow">
+      <label>Status<select id="eS" ${off}><option value="">— manter —</option>${STATUS.map(x => `<option value="${x.k}" ${one && one.s === x.k ? 'selected' : ''}>${x.n}</option>`).join('')}</select></label>
+      <label>Data de execução<input type="date" id="eD" ${off} value="${one ? one.d : ''}"></label>
+      <label>Observações<input id="eO" ${off} value="${esc(one ? one.o : '')}"></label>
+    </div>
+    <div class="ebtn">
+      <button class="primary" data-act="apply" ${off}>Aplicar à seleção</button>
+      <button data-act="today" ${off} title="Status Executado e data de hoje">Executado hoje</button>
+      <button data-act="cleardate" ${off}>Limpar datas</button>
+      <button data-act="reset" ${off}>Voltar a Pendente</button>
+      <button data-act="inv">Inverter seleção</button>
+    </div></div>`;
+}
+const idN2 = id => BYID[id].n;
+
+/* ---------- Tabela ---------- */
+const rowOf = id => $(`#tbl tbody tr[data-id="${id}"]`);
+function visibleList(){
+  const q = S.q.trim().toLowerCase();
+  return GL.filter(g => {
+    const gg = G(g.id);
+    if (S.filter && gg.s !== S.filter) return false;
+    if (q && !(`${g.n} ${g.pos} ${gg.o} ${fmt(gg.d)}`.toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+function renderTable(){
+  const list = visibleList();
+  $('#empty').hidden = list.length > 0;
+  $('#tbl tbody').innerHTML = list.map(g => {
+    const gg = G(g.id), [tc, tt] = situacao(gg);
+    return `<tr data-id="${g.id}" class="${sel.has(g.id) ? 'sel' : ''}">
+      <td><input type="checkbox" class="ck" ${sel.has(g.id) ? 'checked' : ''} aria-label="Selecionar ${g.id}"></td>
+      <td class="n">${g.n}</td><td class="ps">${g.pos}</td>
+      <td class="st"><span class="dot" style="background:${color(gg.s)}"></span><select class="ss">${STATUS.map(s => `<option value="${s.k}" ${gg.s === s.k ? 'selected' : ''}>${s.n}</option>`).join('')}</select></td>
+      <td><input type="date" class="dd" value="${gg.d}"></td>
+      <td class="sit"><span class="tag ${tc}">${tt}</span></td>
+      <td><input class="ob" value="${esc(gg.o)}" placeholder="—"></td></tr>`;
+  }).join('');
+}
+function syncRow(id){
+  const tr = rowOf(id); if (!tr) return;
+  const gg = G(id), [tc, tt] = situacao(gg);
+  tr.querySelector('.ss').value = gg.s;
+  tr.querySelector('.dot').style.background = color(gg.s);
+  tr.querySelector('.dd').value = gg.d;
+  tr.querySelector('.sit').innerHTML = `<span class="tag ${tc}">${tt}</span>`;
+  const ob = tr.querySelector('.ob');
+  if (document.activeElement !== ob) ob.value = gg.o;
+}
+function syncSel(){
+  document.querySelectorAll('#tbl tbody tr').forEach(tr => {
+    const on = sel.has(tr.dataset.id);
+    tr.classList.toggle('sel', on);
+    tr.querySelector('.ck').checked = on;
+  });
+}
+
+/* ---------- Atualização geral ---------- */
+function refresh(ids){
+  renderMap(); renderLegend(); renderProgress(); renderSched();
+  (ids || []).forEach(syncRow);
+  if (!$('#editor').contains(document.activeElement)) renderEditor();
+  save();
+}
+function fullRefresh(){
+  applyColors(); renderMap(); renderLegend(); renderProgress(); renderSched(); renderTable(); renderEditor(); save();
+}
+function selChanged(){
+  renderMap(); syncSel(); renderEditor(); renderSched();
+  $('#editor').open = sel.size > 0;   // abre a edição rápida quando há vidros selecionados
+}
+
+/* ---------- Seleção ---------- */
+function clickGlass(id, e, fromMap){
+  if (e.shiftKey && lastClicked && BYID[lastClicked]){
+    const order = GL.map(g => g.id), a = order.indexOf(lastClicked), b = order.indexOf(id);
+    order.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(i => sel.add(i));
+  } else if (e.ctrlKey || e.metaKey){
+    sel.has(id) ? sel.delete(id) : sel.add(id);
+  } else {
+    if (sel.size === 1 && sel.has(id)) sel.clear(); else { sel.clear(); sel.add(id); }
+  }
+  lastClicked = id;
+  selChanged(fromMap ? id : null);
+}
+
+/* ---------- Eventos ---------- */
+$('#map').addEventListener('click', e => {
+  const g = e.target.closest('g[data-id]'); if (g) clickGlass(g.dataset.id, e, true);
+});
+$('#legend').addEventListener('click', e => {
+  const b = e.target.closest('button[data-f]');
+  if (b){ S.filter = S.filter === b.dataset.f ? '' : b.dataset.f; $('#fStatus').value = S.filter; renderTable(); refresh(); }
+  if (e.target.id === 'bResetColors'){ S.colors = {}; fullRefresh(); }
+});
+$('#legend').addEventListener('input', e => {
+  if (e.target.dataset.k){ S.colors[e.target.dataset.k] = e.target.value; applyColors(); renderMap(); renderProgress(); document.querySelectorAll('#tbl tbody tr').forEach(tr => syncRow(tr.dataset.id)); save(); }
+});
+$('#legend').addEventListener('change', e => { if (e.target.dataset.k) renderLegend(); });
+
+const tb = $('#tbl tbody');
+tb.addEventListener('change', e => {
+  const tr = e.target.closest('tr'); if (!tr) return; const id = tr.dataset.id;
+  if (e.target.classList.contains('ck')){
+    e.target.checked ? sel.add(id) : sel.delete(id); lastClicked = id; renderMap(); renderEditor(); tr.classList.toggle('sel', e.target.checked); return;
+  }
+  if (e.target.classList.contains('ss') || e.target.classList.contains('dd')) pushUndo();
+  if (e.target.classList.contains('ss')) put(id, {s: e.target.value});
+  if (e.target.classList.contains('dd')) setDate(id, e.target.value);
+  refresh([id]);
+});
+tb.addEventListener('input', e => {
+  const tr = e.target.closest('tr'); if (!tr) return; const id = tr.dataset.id;
+  if (e.target.classList.contains('ob')){ put(id, {o: e.target.value}); save(); }
+});
+tb.addEventListener('click', e => {
+  const td = e.target.closest('td.n'); if (!td) return;
+  clickGlass(td.parentElement.dataset.id, e, false);
+});
+
+/* ---------- Sincronização (banco compartilhado) ---------- */
+const SY = {db:null, uid:'', ready:false, ro:false, last:{}, lastCfg:'', pend:new Set(), busy:new Set(), cfgPend:false, cfgBusy:false, tm:null, first:false, firstC:false};
+const norm = id => { if (!S.g[id]) return null; const g = G(id); if (g.s === 'pendente' && !g.d && !g.o) return null; return {s:g.s, d:g.d, o:g.o}; };
+const nj = id => JSON.stringify(norm(id));
+const cfgObj = () => ({title:S.title, sub:S.sub, colors:S.colors});
+function setSync(t, cls){ const el = $('#syncst'); if (el){ el.textContent = t; el.className = 'sync ' + (cls || ''); } }
+function applyRO(){ document.body.classList.toggle('ro', SY.ro); if (SY.ro) setSync('Somente leitura', 'warn'); }
+function schedPush(){ if (!SY.db || !SY.ready || SY.ro) return; setSync('Salvando…', 'warn'); clearTimeout(SY.tm); SY.tm = setTimeout(pushAll, 500); }
+function pushAll(){
+  for (const g of GL) if (nj(g.id) !== (SY.last[g.id] ?? 'null')) SY.pend.add(g.id);
+  if (JSON.stringify(cfgObj()) !== SY.lastCfg) SY.cfgPend = true;
+  drain();
+}
+function writeErr(e, retry){
+  if (e && e.code === 'invalid_argument'){ SY.ro = true; applyRO(); return; }
+  setSync('Falha ao salvar – tentando de novo…', 'err'); setTimeout(retry, 5000);
+}
+async function drain(){
+  if (!SY.db || SY.ro) return;
+  for (const id of [...SY.pend]){
+    if (SY.busy.has(id)) continue;
+    SY.pend.delete(id); SY.busy.add(id);
+    const j = nj(id);
+    try {
+      const ref = SY.db.doc('vidros/' + id);
+      if (j === 'null') await ref.delete(); else await ref.set(Object.assign(JSON.parse(j), {t:Date.now(), u:SY.uid}));
+      SY.last[id] = j;
+      if (nj(id) !== j) SY.pend.add(id);
+    } catch(e){ writeErr(e, () => { SY.pend.add(id); drain(); }); }
+    SY.busy.delete(id);
+  }
+  if (SY.cfgPend && !SY.cfgBusy){
+    SY.cfgPend = false; SY.cfgBusy = true;
+    const j = JSON.stringify(cfgObj());
+    try { await SY.db.doc('cfg/main').set(Object.assign(JSON.parse(j), {t:Date.now(), u:SY.uid})); SY.lastCfg = j; if (JSON.stringify(cfgObj()) !== j) SY.cfgPend = true; }
+    catch(e){ writeErr(e, () => { SY.cfgPend = true; drain(); }); }
+    SY.cfgBusy = false;
+  }
+  if (SY.pend.size || SY.cfgPend) return drain();
+  if (!SY.ro && !SY.busy.size) setSync('Sincronizado', 'ok');
+}
+function applyRemote(ids){
+  renderMap(); renderLegend(); renderProgress();
+  if (!$('#sched').contains(document.activeElement)) renderSched();
+  if (!$('#tbl').contains(document.activeElement)) renderTable();
+  else ids.forEach(id => { const tr = document.querySelector('#tbl tbody tr[data-id="' + id + '"]'); if (tr && !tr.contains(document.activeElement)) syncRow(id); });
+  if (!$('#editor').contains(document.activeElement)) renderEditor();
+  persistLocal();
+}
+function onVidros(snap){
+  if (snap.metadata.fromCache && !SY.first) return;
+  const remote = {}; snap.docs.forEach(d => { const x = d.data() || {}; remote[d.id] = {s:x.s || 'pendente', d:x.d || '', o:x.o || ''}; });
+  const changed = [];
+  const firstTime = !SY.first; SY.first = true;
+  if (firstTime && snap.size > 0) for (const g of GL) if (!remote[g.id] && S.g[g.id]){ delete S.g[g.id]; changed.push(g.id); }
+  for (const g of GL){
+    const id = g.id, r = remote[id] || null;
+    if (SY.pend.has(id) || SY.busy.has(id)) continue;
+    SY.last[id] = JSON.stringify(r);
+    if (JSON.stringify(r) !== nj(id)){ if (r) S.g[id] = r; else delete S.g[id]; changed.push(id); }
+  }
+  if (changed.length) applyRemote(changed);
+  if (firstTime){ SY.ready = true; pushAll(); }
+}
+function onCfg(snap){
+  if (snap.metadata.fromCache && !SY.firstC) return;
+  SY.firstC = true;
+  if (!snap.exists) return;
+  const x = snap.data() || {};
+  if (SY.cfgPend || SY.cfgBusy) return;
+  S.title = x.title ?? S.title; S.sub = x.sub ?? S.sub; S.colors = x.colors || {};
+  SY.lastCfg = JSON.stringify(cfgObj());
+  if (document.activeElement !== $('#title')) $('#title').value = S.title;
+  if (document.activeElement !== $('#sub')) $('#sub').value = S.sub;
+  document.title = S.title; applyColors(); renderMap(); renderLegend(); renderProgress();
+  document.querySelectorAll('#tbl tbody tr').forEach(tr => syncRow(tr.dataset.id));
+  persistLocal();
+}
+/* ---- Firebase (mesma arquitetura do Casa Fina: código do projeto + Firestore) ---- */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAOWq0toJWhxFxR6QU7OCAPAZIZFOh4Xy4",
+  authDomain: "mapa-vidros.firebaseapp.com",
+  projectId: "mapa-vidros",
+  storageBucket: "mapa-vidros.firebasestorage.app",
+  messagingSenderId: "797126467842",
+  appId: "1:797126467842:web:95c7a8da22eb13c544a21b"
+};
+const CODE_RE = /^[A-Z2-9]{4}-[A-Z2-9]{4}$/;
+const LSC = 'mapaVidros.codigo';
+function newCode(){ const al = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const r = new Uint8Array(8); crypto.getRandomValues(r); let c = ''; r.forEach((v, i) => { c += al[v % al.length]; if (i === 3) c += '-'; }); return c; }
+function gate(html){ const o = document.createElement('div'); o.className = 'dlg'; o.id = 'gate'; o.innerHTML = '<div class="box" style="max-width:420px">' + html + '</div>'; document.body.appendChild(o); return o; }
+function wrapDb(fdb, code){
+  const base = 'mapas/' + code + '/';
+  const wrap = (sn) => ({exists: sn.exists, data: () => sn.data(), metadata: {fromCache: sn.metadata.fromCache}});
+  return {
+    doc: p => { const r = fdb.doc(base + p); return {set: d => r.set(d), delete: () => r.delete(), onSnapshot: (n, e) => r.onSnapshot(sn => n(wrap(sn)), e)}; },
+    collection: c => ({onSnapshot: (n, e) => fdb.collection(base + c).onSnapshot(sn => n({docs: sn.docs.map(d => ({id: d.id, data: () => d.data()})), size: sn.size, metadata: {fromCache: sn.metadata.fromCache}}), e)})
+  };
+}
+function connect(fdb, code){
+  history.replaceState(null, '', '#' + code); try { localStorage.setItem(LSC, code); } catch(_){}
+  const chip = $('#codechip'); chip.hidden = false; chip.textContent = '🔗 ' + code;
+  chip.onclick = async () => { const url = location.origin + location.pathname + '#' + code; try { await navigator.clipboard.writeText(url); toast('Link do projeto copiado'); } catch(_){ prompt('Link do projeto:', url); } };
+  const db = wrapDb(fdb, code);
+  SY.db = db; setSync('Conectando…', 'warn');
+  const t10 = setTimeout(() => { if (!SY.first) setSync('Sem conexão com o banco – dados locais', 'err'); }, 10000);
+  const err = e => { clearTimeout(t10); setSync('Sincronização interrompida (' + (e && e.code || 'erro') + ')', 'err'); };
+  db.collection('vidros').onSnapshot(s => { clearTimeout(t10); onVidros(s); if (!SY.ro) setSync('Sincronizado', 'ok'); }, err);
+  db.doc('cfg/main').onSnapshot(onCfg, err);
+}
+(function startSync(){
+  const cfgOk = FIREBASE_CONFIG.projectId && !/COLE_AQUI/.test(FIREBASE_CONFIG.projectId);
+  if (!cfgOk || typeof firebase === 'undefined'){
+    setSync('Configuração Firebase necessária', 'err');
+    gate('<p><b>Configuração do Firebase necessária.</b></p><p>Edite o <code>index.html</code>, substitua o bloco <code>FIREBASE_CONFIG</code> pelos dados do seu projeto Firebase e publique de novo. Enquanto isso o app funciona só neste navegador.</p><div><button class="yes" id="gOk">Usar só neste navegador</button></div>').querySelector('#gOk').onclick = () => $('#gate').remove();
+    return;
+  }
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const fdb = firebase.firestore();
+  let code = (location.hash || '').slice(1).toUpperCase();
+  if (!CODE_RE.test(code)) { try { code = localStorage.getItem(LSC) || ''; } catch(_){ code = ''; } }
+  if (CODE_RE.test(code)) { connect(fdb, code); return; }
+  const g = gate('<p><b>Mapa de Substituição de Vidros</b></p><p>Crie um projeto novo ou entre com o código que recebeu.</p><div style="flex-direction:column;align-items:stretch"><button class="yes" id="gNew">Criar novo projeto</button><input id="gCode" placeholder="XXXX-XXXX" maxlength="9" style="padding:8px;border:1px solid #bbb;border-radius:6px;text-transform:uppercase"><button id="gJoin">Entrar com código</button></div>');
+  g.querySelector('#gNew').onclick = async () => { const c = newCode(); try { await fdb.doc('mapas/' + c).set({criado: Date.now()}); } catch(e){ toast('Não foi possível criar o projeto (' + (e.code || 'erro') + ')'); return; } g.remove(); connect(fdb, c); toast('Projeto criado. Código: ' + c); };
+  g.querySelector('#gJoin').onclick = () => { const c = g.querySelector('#gCode').value.trim().toUpperCase(); if (!CODE_RE.test(c)){ toast('Código inválido'); return; } g.remove(); connect(fdb, c); };
+})();
+
+/* Desfazer */
+const hist = [];
+const pushUndo = () => { hist.push(JSON.stringify(S.g)); if (hist.length > 80) hist.shift(); $('#bUndo').disabled = false; };
+function undo(){
+  if (!hist.length) return;
+  S.g = JSON.parse(hist.pop()); $('#bUndo').disabled = !hist.length;
+  renderTable(); fullRefresh(); toast('Alteração desfeita');
+}
+$('#bUndo').addEventListener('click', undo);
+let tt;
+function toast(msg){ const el = $('#toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), 2800); }
+const plural = (n, a, b) => n + ' ' + (n === 1 ? a : b);
+
+/* Cronograma */
+const gids = d => GL.filter(g => G(g.id).d === d).map(g => g.id);
+const sc = $('#sched');
+sc.addEventListener('input', e => {
+  if (e.target.id === 'nD') NEW.d = e.target.value;
+  if (e.target.id === 'nS') NEW.s = e.target.value;
+  if (e.target.id === 'nV'){ NEW.v = e.target.value; fitAreas(); }
+  if (e.target.classList.contains('gv')) fitAreas();
+});
+sc.addEventListener('change', e => {
+  const tr = e.target.closest('tr[data-d]'); if (!tr) return;
+  const d = tr.dataset.d, ids = gids(d), t = e.target;
+  if (t.classList.contains('gd')){
+    pushUndo(); ids.forEach(i => setDate(i, t.value)); refresh(ids);
+    toast(t.value ? `${plural(ids.length, 'vidro movido', 'vidros movidos')} para ${fmt(t.value)}` : 'Data removida dos vidros');
+  } else if (t.classList.contains('gs')){
+    if (t.value === 'misto') return;
+    pushUndo(); ids.forEach(i => put(i, {s: t.value})); refresh(ids);
+    toast(`${plural(ids.length, 'vidro', 'vidros')} de ${fmt(d)} → ${SK[t.value].n}`);
+  } else if (t.classList.contains('gv')){
+    const {ok, bad} = parseNums(t.value), old = new Set(ids.map(idN2)), nw = new Set(ok);
+    const added = ok.filter(n => !old.has(n)), removed = [...old].filter(n => !nw.has(n));
+    if (added.length || removed.length){
+      pushUndo();
+      added.forEach(n => setDate(idN(n), d)); removed.forEach(n => setDate(idN(n), ''));
+      refresh([...added, ...removed].map(idN));
+    } else renderSched();
+    toast((added.length || removed.length ? `${added.length} adicionado(s), ${removed.length} removido(s) em ${fmt(d)}` : 'Sem alterações') + (bad.length ? ` · ignorado(s): ${bad.join(', ')}` : ''));
+  }
+});
+sc.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && e.target.tagName === 'TEXTAREA'){
+    e.preventDefault();
+    if (e.target.id === 'nV') addNew(); else e.target.blur();
+  }
+});
+function addNew(){
+  const d = NEW.d, {ok, bad} = parseNums(NEW.v);
+  if (!d) return toast('Informe a data');
+  if (!ok.length) return toast(bad.length ? 'Nenhum número válido: ' + bad.join(', ') : 'Informe os vidros (ex.: 4, 6, 35-37)');
+  pushUndo();
+  const ids = ok.map(idN);
+  ids.forEach(i => { if (NEW.s) put(i, {s: NEW.s, d}); else setDate(i, d); });
+  NEW.v = ''; refresh(ids);
+  toast(`${plural(ids.length, 'vidro adicionado', 'vidros adicionados')} em ${fmt(d)}` + (bad.length ? ` · ignorado(s): ${bad.join(', ')}` : ''));
+}
+sc.addEventListener('click', e => {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  const tr = b.closest('tr[data-d]'), a = b.dataset.a;
+  if (a === 'add') return addNew();
+  if (a === 'usesel'){
+    if (!sel.size) return toast('Selecione vidros no mapa primeiro');
+    NEW.v = compact([...sel].map(idN2)); $('#nV').value = NEW.v; fitAreas(); return;
+  }
+  if (!tr) return;
+  const ids = gids(tr.dataset.d);
+  if (a === 'sel'){ sel = new Set(ids); selChanged(ids[0]); }
+  if (a === 'del'){ pushUndo(); ids.forEach(i => setDate(i, '')); refresh(ids); toast(`Data removida de ${plural(ids.length, 'vidro', 'vidros')}`); }
+});
+
+/* Edição rápida */
+function applyEditor(ids){
+  const s = $('#eS').value, d = $('#eD').value, ob = $('#eO').value, single = ids.length === 1;
+  pushUndo();
+  ids.forEach(i => {
+    const cur = G(i), statusChanged = s && s !== cur.s;
+    if (statusChanged) put(i, {s});
+    if (d !== cur.d && (d || single)){
+      if (statusChanged) put(i, {d}); else setDate(i, d);   // sem mudar o status à mão, vale o status automático pela data
+    }
+    if (single) put(i, {o: ob});
+    else if (ob) put(i, {o: ob});
+  });
+  refresh(ids); renderEditor();
+  toast(`${plural(ids.length, 'vidro atualizado', 'vidros atualizados')}`);
+}
+$('#editor').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && sel.size) applyEditor([...sel]); });
+$('#editor').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]'); if (!btn || btn.disabled) return;   // só botões: clicar nos campos não refaz o painel
+  const act = btn.dataset.act, ids = [...sel];
+  if (act === 'inv'){ sel = new Set(GL.map(g => g.id).filter(i => !sel.has(i))); selChanged(); return; }
+  if (!ids.length) return;
+  if (act === 'apply') return applyEditor(ids);
+  pushUndo();
+  if (act === 'today') ids.forEach(i => put(i, {s: 'executado', d: today()}));
+  if (act === 'cleardate') ids.forEach(i => setDate(i, ''));
+  if (act === 'reset') ids.forEach(i => put(i, {s: 'pendente', d: ''}));
+  refresh(ids); renderEditor();
+  toast(`${plural(ids.length, 'vidro atualizado', 'vidros atualizados')}`);
+});
+
+$('#selLabel').addEventListener('change', e => { S.label = e.target.value; renderMap(); save(); });
+$('#chkPin').addEventListener('change', e => { S.pin = e.target.checked; document.body.classList.toggle('nopin', !S.pin); updMapH(); save(); });
+$('#zoom').addEventListener('input', e => { S.zoom = +e.target.value; $('#map').style.width = (S.zoom * 100) + '%'; save(); });
+$('#chkView').addEventListener('change', e => { S.view = e.target.checked; refresh(); });
+$('#refDate').addEventListener('change', e => { S.ref = e.target.value || today(); refresh(); });
+$('#chkAuto').addEventListener('change', e => { S.auto = e.target.checked; save(); });
+$('#title').addEventListener('input', e => { S.title = e.target.value; document.title = S.title; save(); });
+$('#sub').addEventListener('input', e => { S.sub = e.target.value; save(); });
+$('#q').addEventListener('input', e => { S.q = e.target.value; renderTable(); save(); });
+$('#fStatus').addEventListener('change', e => { S.filter = e.target.value; renderTable(); refresh(); });
+$('#bAll').addEventListener('click', () => { visibleList().forEach(g => sel.add(g.id)); selChanged(); });
+$('#bNone').addEventListener('click', () => { sel.clear(); selChanged(); });
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){ e.preventDefault(); undo(); return; }
+  if (e.key === 'Escape' && sel.size && !/INPUT|SELECT/.test(document.activeElement.tagName)){ sel.clear(); selChanged(); } });
+
+/* ---------- Exportar / importar ---------- */
+function ask(msg){
+  return new Promise(res => {
+    const o = document.createElement('div'); o.className = 'dlg';
+    o.innerHTML = '<div class="box"><p></p><div><button class="no">Cancelar</button><button class="yes">Confirmar</button></div></div>';
+    o.querySelector('p').textContent = msg; document.body.appendChild(o);
+    const end = v => { o.remove(); res(v); };
+    o.querySelector('.no').onclick = () => end(false); o.querySelector('.yes').onclick = () => end(true);
+  });
+}
+async function download(name, mime, content){
+  try {
+    const dl = (window.claude && claude.use) ? await claude.use('downloads') : null;
+    if (dl){ await dl.save({filename:name, data:content}); return; }
+  } catch(e){ if (e && e.code === 'declined') return; }
+  _download(name, mime, content);
+}
+function _download(name, mime, content){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type: mime}));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+$('#bCsv').addEventListener('click', () => {
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const rows = [['Nº','Posição','Status','Data de execução','Situação','Observações']];
+  for (const g of GL){ const gg = G(g.id); rows.push([g.n, g.pos, SK[gg.s].n, fmt(gg.d), situacao(gg)[1], gg.o]); }
+  download('mapa_vidros_' + today() + '.csv', 'text/csv;charset=utf-8', '﻿' + rows.map(r => r.map(q).join(';')).join('\r\n'));
+});
+$('#bJson').addEventListener('click', () => download('mapa_vidros_backup_' + today() + '.json', 'application/json', JSON.stringify(S, null, 1)));
+$('#bImp').addEventListener('click', () => $('#fImp').click());
+$('#fImp').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = async () => {
+    try {
+      const o = JSON.parse(r.result);
+      if (!o || typeof o.g !== 'object') throw 0;
+      if (!(await ask('Substituir os dados atuais (compartilhados) pelo backup carregado?'))) return;
+      S = Object.assign(DEF(), o); sel.clear(); hist.length = 0; $('#bUndo').disabled = true; init();
+    } catch(_){ toast('Arquivo de backup inválido.'); }
+  };
+  r.readAsText(f); e.target.value = '';
+});
+$('#bClear').addEventListener('click', async () => {
+  if (!(await ask('Apagar status, datas e observações de TODOS os vidros (para todos os usuários)?'))) return;
+  pushUndo(); S.g = {}; sel.clear(); init();
+});
+
+/* ---------- Início ---------- */
+function updMapH(){ document.documentElement.style.setProperty('--mapH', (document.body.classList.contains('nopin') ? 0 : $('#mapcard').offsetHeight) + 'px'); }
+new ResizeObserver(updMapH).observe($('#mapcard'));
+function init(){
+  $('#title').value = S.title; document.title = S.title;
+  $('#sub').value = S.sub;
+  $('#chkPin').checked = S.pin; document.body.classList.toggle('nopin', !S.pin);
+  $('#selLabel').value = S.label; $('#zoom').value = S.zoom;
+  $('#chkView').checked = S.view; $('#refDate').value = S.ref || today();
+  $('#chkAuto').checked = S.auto; $('#q').value = S.q;
+  $('#fStatus').innerHTML = `<option value="">Todos</option>` + STATUS.map(s => `<option value="${s.k}">${s.n}</option>`).join('');
+  $('#fStatus').value = S.filter;
+  fullRefresh();
+}
+init();
+})();
+</script>
+</body>
+</html>
