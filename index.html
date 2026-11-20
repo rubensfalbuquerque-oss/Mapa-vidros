@@ -143,7 +143,7 @@ body.dark{--bg:#000;--card:#0b0b0b;--line:#2b2b2b;--txt:#e8e8e8;--mut:#9a9a9a;--
 body.dark button{background:#141414;color:#e8e8e8}
 body.dark button:hover{background:#202020}
 body.dark button.primary{background:#2b6be0;border-color:#2b6be0;color:#fff}
-body.dark input,body.dark select{background:#111;color:#e8e8e8}
+body.dark input,body.dark select,body.dark textarea{background:#111;color:#e8e8e8}
 body.dark header.top{background:#000}
 body.dark .mapcard{box-shadow:0 3px 10px rgba(0,0,0,.8)}
 body.dark .mapwrap{background:#050505}
@@ -326,7 +326,7 @@ const GL = [];
 const BYID = Object.fromEntries(GL.map(g => [g.id, g]));
 
 /* ---------- Estado ---------- */
-const DEF = () => ({title:'Mapa de Substituição de Vidros', sub:'Planta Zona Oeste / Leste – Piso Superior · DE-3601.04-8243-15D-HBU-003-0', g:{}, colors:{}, auto:true, zoom:1, label:'n', view:false, ref:today(), filter:'', q:'', pin:true});
+const DEF = () => ({title:'Mapa de Substituição de Vidros', sub:'Planta Zona Oeste / Leste – Piso Superior · DE-3601.04-8243-15D-HBU-003-0', g:{}, colors:{}, obsD:{}, auto:true, zoom:1, label:'n', view:false, ref:today(), filter:'', q:'', pin:true});
 let S = DEF();
 try { const raw = localStorage.getItem(LS); if (raw) S = Object.assign(DEF(), JSON.parse(raw)); } catch(e){}
 for (const id in S.g){ const x = S.g[id]; if (x && x.e){ x.o = x.o ? x.o + ' | ' + x.e : x.e; } if (x) delete x.e; }
@@ -473,13 +473,14 @@ function renderSched(){
       <td class="num">${ns.length}</td>
       <td class="num">${acc} (${(100 * acc / GL.length).toFixed(0)}%)</td>
       <td><textarea class="gv" rows="1" spellcheck="false" title="Edite os números (ex.: 4, 6, 35-37). Enter confirma.">${compact(ns)}</textarea></td>
+      <td><textarea class="go" rows="1" spellcheck="false" placeholder="Observações da data…" title="Observação desta data. Enter confirma (Shift+Enter = nova linha).">${esc((S.obsD || {})[d] || '')}</textarea></td>
       <td><button class="sm" data-a="del" title="Remover a data destes vidros">✕</button></td></tr>`;
   }).join('');
   const nodate = GL.filter(g => !G(g.id).d).map(g => g.n);
   $('#sched').innerHTML = `
     <h3>Cronograma por data <span class="mut">— edite a data, o status ou a lista de vidros direto na linha</span></h3>
     <table>
-      <thead><tr><th></th><th>Data</th><th>Situação</th><th>Status</th><th style="text-align:right">Qtd</th><th style="text-align:right">Acumulado</th><th>Vidros (nºs, ex.: 4, 6, 35-37)</th><th></th></tr></thead>
+      <thead><tr><th></th><th>Data</th><th>Situação</th><th>Status</th><th style="text-align:right">Qtd</th><th style="text-align:right">Acumulado</th><th>Vidros (nºs, ex.: 4, 6, 35-37)</th><th>Observações</th><th></th></tr></thead>
       <tbody>
         <tr class="newrow">
           <td>＋</td>
@@ -487,9 +488,10 @@ function renderSched(){
           <td colspan="2"><select id="nS"><option value="">Status automático</option>${STATUS.map(x => `<option value="${x.k}" ${NEW.s === x.k ? 'selected' : ''}>${x.n}</option>`).join('')}</select></td>
           <td></td><td></td>
           <td><textarea id="nV" rows="1" spellcheck="false" placeholder="Nova data: informe a data e os vidros">${esc(NEW.v)}</textarea></td>
+          <td></td>
           <td style="white-space:nowrap"><button class="sm primary" data-a="add">Adicionar</button><br><button class="sm" data-a="usesel" title="Preencher com os vidros selecionados" style="margin-top:3px">↤ seleção</button></td>
         </tr>
-        ${rows || `<tr><td colspan="8" class="mut" style="padding:10px">Nenhuma data informada ainda.</td></tr>`}
+        ${rows || `<tr><td colspan="9" class="mut" style="padding:10px">Nenhuma data informada ainda.</td></tr>`}
       </tbody>
     </table>
     <div class="nodate"><b>Sem data (${nodate.length}):</b> ${nodate.length ? compact(nodate) : '—'}</div>`;
@@ -628,7 +630,7 @@ tb.addEventListener('click', e => {
 const SY = {db:null, uid:'', ready:false, ro:false, last:{}, lastCfg:'', pend:new Set(), busy:new Set(), cfgPend:false, cfgBusy:false, tm:null, first:false, firstC:false};
 const norm = id => { if (!S.g[id]) return null; const g = G(id); if (g.s === 'pendente' && !g.d && !g.o) return null; return {s:g.s, d:g.d, o:g.o}; };
 const nj = id => JSON.stringify(norm(id));
-const cfgObj = () => ({title:S.title, sub:S.sub, colors:S.colors});
+const cfgObj = () => ({title:S.title, sub:S.sub, colors:S.colors, obsD:S.obsD || {}});
 function setSync(t, cls){ const el = $('#syncst'); if (el){ el.textContent = t; el.className = 'sync ' + (cls || ''); } }
 function applyRO(){ document.body.classList.toggle('ro', SY.ro); if (SY.ro) setSync('Somente leitura', 'warn'); }
 function schedPush(){ if (!SY.db || !SY.ready || SY.ro) return; setSync('Salvando…', 'warn'); clearTimeout(SY.tm); SY.tm = setTimeout(pushAll, 500); }
@@ -694,7 +696,7 @@ function onCfg(snap){
   if (!snap.exists) return;
   const x = snap.data() || {};
   if (SY.cfgPend || SY.cfgBusy) return;
-  S.title = x.title ?? S.title; S.sub = x.sub ?? S.sub; S.colors = x.colors || {};
+  S.title = x.title ?? S.title; S.sub = x.sub ?? S.sub; S.colors = x.colors || {}; S.obsD = x.obsD || {};
   SY.lastCfg = JSON.stringify(cfgObj());
   if (document.activeElement !== $('#title')) $('#title').value = S.title;
   if (document.activeElement !== $('#sub')) $('#sub').value = S.sub;
@@ -771,12 +773,17 @@ sc.addEventListener('input', e => {
   if (e.target.id === 'nD') NEW.d = e.target.value;
   if (e.target.id === 'nS') NEW.s = e.target.value;
   if (e.target.id === 'nV'){ NEW.v = e.target.value; fitAreas(); }
-  if (e.target.classList.contains('gv')) fitAreas();
+  if (e.target.classList.contains('gv') || e.target.classList.contains('go')) fitAreas();
 });
 sc.addEventListener('change', e => {
   const tr = e.target.closest('tr[data-d]'); if (!tr) return;
   const d = tr.dataset.d, ids = gids(d), t = e.target;
-  if (t.classList.contains('gd')){
+  if (t.classList.contains('go')){
+    const v = t.value.trim(); S.obsD = S.obsD || {};
+    if (v) S.obsD[d] = v; else delete S.obsD[d];
+    save(); toast(v ? 'Observação salva em ' + fmt(d) : 'Observação removida de ' + fmt(d));
+  } else if (t.classList.contains('gd')){
+    if (t.value && (S.obsD || {})[d]){ const o = S.obsD[d]; delete S.obsD[d]; S.obsD[t.value] = S.obsD[t.value] ? S.obsD[t.value] + ' | ' + o : o; }
     pushUndo(); ids.forEach(i => setDate(i, t.value)); refresh(ids);
     toast(t.value ? `${plural(ids.length, 'vidro movido', 'vidros movidos')} para ${fmt(t.value)}` : 'Data removida dos vidros');
   } else if (t.classList.contains('gs')){
@@ -821,7 +828,7 @@ sc.addEventListener('click', e => {
   if (!tr) return;
   const ids = gids(tr.dataset.d);
   if (a === 'sel'){ sel = new Set(ids); selChanged(ids[0]); }
-  if (a === 'del'){ pushUndo(); ids.forEach(i => setDate(i, '')); refresh(ids); toast(`Data removida de ${plural(ids.length, 'vidro', 'vidros')}`); }
+  if (a === 'del'){ if (S.obsD) delete S.obsD[tr.dataset.d]; pushUndo(); ids.forEach(i => setDate(i, '')); refresh(ids); toast(`Data removida de ${plural(ids.length, 'vidro', 'vidros')}`); }
 });
 
 /* Edição rápida */
@@ -917,7 +924,7 @@ $('#fImp').addEventListener('change', e => {
 });
 $('#bClear').addEventListener('click', async () => {
   if (!(await ask('Apagar status, datas e observações de TODOS os vidros (para todos os usuários)?'))) return;
-  pushUndo(); S.g = {}; sel.clear(); init();
+  pushUndo(); S.g = {}; S.obsD = {}; sel.clear(); init();
 });
 
 /* ---------- Início ---------- */
