@@ -52,7 +52,7 @@ svg#map{display:block;width:100%;height:auto;min-width:100%}
 .gl polygon{stroke:#56656f;stroke-width:1;vector-effect:non-scaling-stroke;cursor:pointer;transition:opacity .15s}
 .gl:hover polygon{stroke:#10202c;stroke-width:1.8}
 .gl.late polygon{stroke:#b3261e;stroke-width:1.8;stroke-dasharray:3 2}
-.gl.sel polygon{stroke:#0b57d0;stroke-width:2.8;stroke-dasharray:none}
+.gl.sel polygon{stroke:#39ff14;stroke-width:3.2;stroke-dasharray:none;filter:drop-shadow(0 0 2.5px #39ff14)}
 .gl.dim{opacity:.22}
 .gl text{pointer-events:none;text-anchor:middle;dominant-baseline:central;font-weight:600}
 .hint{font-size:11.5px;color:var(--mut);margin-top:6px}
@@ -79,7 +79,7 @@ table{border-collapse:collapse;width:100%;min-width:760px}
 th,td{padding:3px 5px;border-bottom:1px solid #eaeef2;text-align:left;vertical-align:middle;white-space:nowrap}
 thead th{position:sticky;top:var(--mapH,0px);background:#f7f9fb;z-index:1;font-size:11.5px;color:var(--mut);border-bottom:1px solid var(--line)}
 tbody tr:hover{background:#f6f9fd}
-tbody tr.sel{background:#e4eefc}
+tbody tr.sel{background:#d4ffc9}
 td.n{cursor:pointer}
 td.n{font-weight:700;text-align:right;width:38px}
 td.ps{color:var(--mut);font-size:12px}
@@ -109,7 +109,7 @@ td input.ob{width:100%;min-width:160px}
 #sched textarea{width:100%;min-width:140px;resize:none;overflow:hidden;border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit;line-height:1.3}
 #sched select,#sched input[type=date]{width:100%}
 #sched tr.newrow td{background:#f3f7fd;border-bottom:2px solid var(--line)}
-#sched tr.sel td{background:#e4eefc}
+#sched tr.sel td{background:#d4ffc9}
 button.sm{padding:2px 7px;line-height:1.2}
 .nodate{margin-top:8px;color:var(--mut);font-size:12px}
 .sync{font-size:12px;padding:3px 9px;border-radius:12px;background:#eef2f5;color:#4a5a66;white-space:nowrap}
@@ -150,14 +150,14 @@ body.dark .mapwrap{background:#050505}
 body.dark .outline{fill:#0f0f0f;stroke:#777}
 body.dark .gl polygon{stroke:#8a8a8a}
 body.dark .gl:hover polygon{stroke:#fff}
-body.dark .gl.sel polygon{stroke:#7fb0ff}
+body.dark .gl.sel polygon{stroke:#39ff14}
 body.dark .lg{background:#0b0b0b}
 body.dark .lg.on{box-shadow:0 0 0 2px #1f3a6b}
 body.dark .bar{background:#1a1a1a}
 body.dark th,body.dark td{border-bottom-color:#1c1c1c}
 body.dark thead th{background:#0a0a0a}
 body.dark tbody tr:hover{background:#111}
-body.dark tbody tr.sel,body.dark #sched tr.sel td{background:#10213f}
+body.dark tbody tr.sel,body.dark #sched tr.sel td{background:#0c3a08}
 body.dark #sched tr.newrow td{background:#0c0c0c}
 body.dark .tag.ok{background:#12301f;color:#6fe0a0}
 body.dark .tag.plan{background:#12223f;color:#8fb6ff}
